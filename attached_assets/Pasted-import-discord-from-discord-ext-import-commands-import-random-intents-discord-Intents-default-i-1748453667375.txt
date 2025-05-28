@@ -66,4 +66,3 @@ async def on_command_error(ctx, error):
 
 # Run the bot with your token
 bot.run('YOUR_BOT_TOKEN')
-
