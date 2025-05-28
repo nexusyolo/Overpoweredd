@@ -1,19 +1,10 @@
+
 import discord
 from discord.ext import commands
 import random
 import os
 
-token = os.getenv('DISCORD_BOT_TOKEN')
-if not token:
-    print("Error: DISCORD_BOT_TOKEN not found in environment variables!")
-    print("Please add your Discord bot token to the Secrets tab.")
-else:
-    intents = discord.Intents.default()
-    intents.message_content = True
-
-    bot = commands.Bot(command_prefix='!', intents=intents)
-    bot.run(token)
-
+# Setup intents and bot
 intents = discord.Intents.default()
 intents.message_content = True
 
@@ -21,7 +12,7 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 
 @bot.event
 async def on_ready():
-    print('Logged in as {bot.user.name} ({bot.user.id})')
+    print(f'Logged in as {bot.user.name} ({bot.user.id})')
     await bot.change_presence(
         status=discord.Status.online,
         activity=discord.Game(name="!help | Type me a command!")
@@ -75,3 +66,11 @@ async def on_command_error(ctx, error):
         await ctx.send("Sorry, I don't recognize that command. Use !help to see available commands.")
     else:
         await ctx.send("An error occurred while executing the command.")
+
+# Run the bot
+token = os.getenv('DISCORD_BOT_TOKEN')
+if not token:
+    print("Error: DISCORD_BOT_TOKEN not found in environment variables!")
+    print("Please add your Discord bot token to the Secrets tab.")
+else:
+    bot.run(token)
