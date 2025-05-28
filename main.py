@@ -64,6 +64,13 @@ async def on_command_error(ctx, error):
     else:
         await ctx.send("An error occurred while executing the command.")
 
+import os
+
 # Run the bot with your token
-bot.run('YOUR_BOT_TOKEN')
+token = os.getenv('DISCORD_BOT_TOKEN')
+if not token:
+    print("Error: DISCORD_BOT_TOKEN not found in environment variables!")
+    print("Please add your Discord bot token to the Secrets tab.")
+else:
+    bot.run(token)
 
