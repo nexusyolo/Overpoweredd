@@ -1,12 +1,12 @@
 import discord
+import asyncio
+import os
 from discord.ext import commands
 import random
-import os
-from keep_alive import keep_alive  # Import the keep_alive function
+from keep_alive import keep_alive
 
-# Setup intents and bot
 intents = discord.Intents.default()
-intents.message_content = True
+intents.message_content = True  # Enable message content intents if required
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
@@ -44,11 +44,12 @@ async def eightball(ctx, *, question):
     ]
     await ctx.send(f'🎱 {random.choice(responses)}')
 
-# Run the bot
+# Get token from environment variables
 token = os.getenv('DISCORD_BOT_TOKEN')
 if not token:
     print("Error: DISCORD_BOT_TOKEN not found in environment variables!")
     print("Please add your Discord bot token to the Secrets tab.")
 else:
     keep_alive()  # Start the keep-alive server before running the bot
+
     bot.run(token)
