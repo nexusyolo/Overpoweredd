@@ -3,6 +3,7 @@ import asyncio
 import os
 from discord.ext import commands
 import random
+import aiohttp
 from keep_alive import keep_alive
 
 intents = discord.Intents.default()
@@ -130,12 +131,73 @@ async def help_command(ctx):
     
     embed.add_field(
         name="⚙️ Utility Commands",
-        value="`!status` - Check bot status\n`!announce` - Announce bot is online\n`!help` - Show this help menu",
+        value="`!status` - Check bot status\n`!announce` - Announce bot is online\n`!robloxverify <username>` - Verify a Roblox user\n`!help` - Show this help menu",
         inline=False
     )
     
     embed.set_footer(text="Made by Overpowered Productions! | Use ! before each command")
     await ctx.send(embed=embed)
+
+@bot.command(name='robloxverify')
+async def roblox_verify(ctx, *, username: str):
+    """Verify a Roblox username and get user information"""
+    async with aiohttp.ClientSession() as session:
+        try:
+            # Get user ID from username
+            search_url = f"https://users.roblox.com/v1/users/search?keyword={username}&limit=1"
+            async with session.get(search_url) as response:
+                if response.status != 200:
+                    await ctx.send("❌ Error connecting to Roblox API!")
+                    return
+                
+                search_data = await response.json()
+                if not search_data.get('data'):
+                    await ctx.send(f"❌ Roblox user '{username}' not found!")
+                    return
+                
+                user_id = search_data['data'][0]['id']
+                exact_username = search_data['data'][0]['name']
+                display_name = search_data['data'][0]['displayName']
+            
+            # Get detailed user information
+            user_url = f"https://users.roblox.com/v1/users/{user_id}"
+            async with session.get(user_url) as response:
+                if response.status != 200:
+                    await ctx.send("❌ Error getting user details!")
+                    return
+                
+                user_data = await response.json()
+                
+                # Create verification embed
+                embed = discord.Embed(
+                    title="🎮 Roblox User Verified!",
+                    description=f"Successfully found Roblox user: **{exact_username}**",
+                    color=0x00b2ff
+                )
+                
+                embed.add_field(name="👤 Username", value=exact_username, inline=True)
+                embed.add_field(name="✨ Display Name", value=display_name, inline=True)
+                embed.add_field(name="🆔 User ID", value=user_id, inline=True)
+                
+                if user_data.get('description'):
+                    embed.add_field(name="📝 Bio", value=user_data['description'][:100] + "..." if len(user_data['description']) > 100 else user_data['description'], inline=False)
+                
+                embed.add_field(name="📅 Created", value=user_data.get('created', 'Unknown')[:10], inline=True)
+                embed.add_field(name="🔗 Profile", value=f"[View Profile](https://www.roblox.com/users/{user_id}/profile)", inline=True)
+                
+                # Try to get avatar thumbnail
+                avatar_url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&size=150x150&format=Png&isCircular=false"
+                async with session.get(avatar_url) as avatar_response:
+                    if avatar_response.status == 200:
+                        avatar_data = await avatar_response.json()
+                        if avatar_data.get('data') and avatar_data['data']:
+                            embed.set_thumbnail(url=avatar_data['data'][0]['imageUrl'])
+                
+                embed.set_footer(text=f"Verified by {ctx.author.display_name}")
+                await ctx.send(embed=embed)
+                
+        except Exception as e:
+            await ctx.send(f"❌ Error verifying Roblox user: {str(e)}")
 
 # Get token from environment variables
 token = os.getenv('DISCORD_BOT_TOKEN')
