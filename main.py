@@ -131,7 +131,7 @@ async def help_command(ctx):
     
     embed.add_field(
         name="⚙️ Utility Commands",
-        value="`!status` - Check bot status\n`!announce` - Announce bot is online\n`!robloxverify <username>` - Verify a Roblox user\n`!help` - Show this help menu",
+        value="`!status` - Check bot status\n`!announce` - Announce bot is online\n`!robloxverify <username>` - Verify a Roblox user\n`!updates` - View bot updates\n`!help` - Show this help menu",
         inline=False
     )
     
@@ -198,6 +198,68 @@ async def roblox_verify(ctx, *, username: str):
                 
         except Exception as e:
             await ctx.send(f"❌ Error verifying Roblox user: {str(e)}")
+
+@bot.command(name='updates')
+async def bot_updates(ctx):
+    """Shows the latest bot updates and changelog"""
+    embed = discord.Embed(
+        title="🔄 Bot Updates & Changelog",
+        description="Here are the latest updates to Overpowered Productions Bot!",
+        color=0x7289da
+    )
+    
+    # Version 1.3.0 - Latest
+    embed.add_field(
+        name="📅 Version 1.3.0 - Latest Update",
+        value="🆕 **New Features:**\n"
+              "• Added `!robloxverify` command with full user verification\n"
+              "• Bot now shows user avatars and profile links\n"
+              "• Enhanced error handling for Roblox API\n"
+              "• Added user creation date and bio display",
+        inline=False
+    )
+    
+    # Version 1.2.0
+    embed.add_field(
+        name="📅 Version 1.2.0",
+        value="🔧 **Improvements:**\n"
+              "• Custom embedded help command\n"
+              "• Private `!announce` command (DM only)\n"
+              "• Auto-announcement when bot comes back online\n"
+              "• Better command organization in help menu",
+        inline=False
+    )
+    
+    # Version 1.1.0
+    embed.add_field(
+        name="📅 Version 1.1.0",
+        value="🎮 **Features Added:**\n"
+              "• `!8ball` magic 8-ball command\n"
+              "• `!roll` dice rolling with custom sides\n"
+              "• `!status` bot health checker\n"
+              "• Enhanced bot presence with activity status",
+        inline=False
+    )
+    
+    # Version 1.0.0
+    embed.add_field(
+        name="📅 Version 1.0.0 - Initial Release",
+        value="🚀 **Core Features:**\n"
+              "• Basic `!hello` and `!ping` commands\n"
+              "• Keep-alive system for 24/7 uptime\n"
+              "• Discord bot foundation established\n"
+              "• Custom command prefix (!)",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🔮 Coming Soon",
+        value="• More Roblox integration features\n• Fun mini-games\n• Server moderation tools\n• Custom user profiles",
+        inline=False
+    )
+    
+    embed.set_footer(text="Made by Overpowered Productions! | Stay tuned for more updates!")
+    await ctx.send(embed=embed)
 
 # Get token from environment variables
 token = os.getenv('DISCORD_BOT_TOKEN')
