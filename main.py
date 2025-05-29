@@ -81,7 +81,7 @@ async def status(ctx):
 
 @bot.command(name='announce')
 async def announce_online(ctx):
-    """Manually announce that the bot is online"""
+    """Manually announce that the bot is online (private message)"""
     embed = discord.Embed(
         title="📢 Bot Status Announcement",
         description="I'm online and ready to serve!",
@@ -89,7 +89,20 @@ async def announce_online(ctx):
     )
     embed.add_field(name="Latency", value=f"{round(bot.latency * 1000)}ms", inline=True)
     embed.add_field(name="Status", value="🟢 Online", inline=True)
-    await ctx.send(embed=embed)
+    
+    # Send as a direct message to the user
+    try:
+        await ctx.author.send(embed=embed)
+        # Delete the original command message if possible
+        try:
+            await ctx.message.delete()
+        except discord.Forbidden:
+            pass  # Bot doesn't have permission to delete messages
+    except discord.Forbidden:
+        # If DM fails, send a temporary message in the channel
+        msg = await ctx.send("❌ I couldn't send you a DM! Please check your privacy settings.")
+        await asyncio.sleep(5)
+        await msg.delete()
 
 # Remove the default help command to replace it with our custom one
 bot.remove_command('help')
