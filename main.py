@@ -141,29 +141,55 @@ async def help_command(ctx):
 @bot.command(name='robloxverify')
 async def roblox_verify(ctx, *, username: str):
     """Verify a Roblox username and get user information"""
-    async with aiohttp.ClientSession() as session:
+    # Create timeout and retry settings
+    timeout = aiohttp.ClientTimeout(total=10)
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+    }
+    
+    async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
         try:
-            # Get user ID from username
+            # Get user ID from username with retry logic
             search_url = f"https://users.roblox.com/v1/users/search?keyword={username}&limit=1"
-            async with session.get(search_url) as response:
-                if response.status != 200:
-                    await ctx.send("❌ Error connecting to Roblox API!")
-                    return
-                
-                search_data = await response.json()
-                if not search_data.get('data'):
-                    await ctx.send(f"❌ Roblox user '{username}' not found!")
-                    return
-                
-                user_id = search_data['data'][0]['id']
-                exact_username = search_data['data'][0]['name']
-                display_name = search_data['data'][0]['displayName']
+            
+            for attempt in range(3):  # Try up to 3 times
+                try:
+                    async with session.get(search_url) as response:
+                        if response.status == 200:
+                            search_data = await response.json()
+                            break
+                        elif response.status == 429:
+                            await ctx.send("⏳ Roblox API rate limited, retrying...")
+                            await asyncio.sleep(2)
+                            continue
+                        else:
+                            await ctx.send(f"❌ Roblox API error (Status: {response.status}). Retrying...")
+                            await asyncio.sleep(1)
+                            continue
+                except asyncio.TimeoutError:
+                    if attempt == 2:
+                        await ctx.send("❌ Connection to Roblox API timed out after 3 attempts!")
+                        return
+                    await ctx.send("⏳ Request timed out, retrying...")
+                    await asyncio.sleep(1)
+                    continue
+            else:
+                await ctx.send("❌ Failed to connect to Roblox API after 3 attempts!")
+                return
+            
+            if not search_data.get('data'):
+                await ctx.send(f"❌ Roblox user '{username}' not found!")
+                return
+            
+            user_id = search_data['data'][0]['id']
+            exact_username = search_data['data'][0]['name']
+            display_name = search_data['data'][0]['displayName']
             
             # Get detailed user information
             user_url = f"https://users.roblox.com/v1/users/{user_id}"
             async with session.get(user_url) as response:
                 if response.status != 200:
-                    await ctx.send("❌ Error getting user details!")
+                    await ctx.send(f"❌ Error getting user details (Status: {response.status})")
                     return
                 
                 user_data = await response.json()
@@ -187,17 +213,24 @@ async def roblox_verify(ctx, *, username: str):
                 
                 # Try to get avatar thumbnail
                 avatar_url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&size=150x150&format=Png&isCircular=false"
-                async with session.get(avatar_url) as avatar_response:
-                    if avatar_response.status == 200:
-                        avatar_data = await avatar_response.json()
-                        if avatar_data.get('data') and avatar_data['data']:
-                            embed.set_thumbnail(url=avatar_data['data'][0]['imageUrl'])
+                try:
+                    async with session.get(avatar_url) as avatar_response:
+                        if avatar_response.status == 200:
+                            avatar_data = await avatar_response.json()
+                            if avatar_data.get('data') and avatar_data['data']:
+                                embed.set_thumbnail(url=avatar_data['data'][0]['imageUrl'])
+                except:
+                    pass  # Avatar is optional, continue without it
                 
                 embed.set_footer(text=f"Verified by {ctx.author.display_name}")
                 await ctx.send(embed=embed)
                 
+        except aiohttp.ClientError as e:
+            await ctx.send(f"❌ Network error connecting to Roblox API: {str(e)}")
+        except asyncio.TimeoutError:
+            await ctx.send("❌ Connection to Roblox API timed out!")
         except Exception as e:
-            await ctx.send(f"❌ Error verifying Roblox user: {str(e)}")
+            await ctx.send(f"❌ Unexpected error verifying Roblox user: {str(e)}")
 
 @bot.command(name='updates')
 async def bot_updates(ctx):
