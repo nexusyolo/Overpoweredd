@@ -1,9 +1,10 @@
 import discord
 import asyncio
 import os
-from discord.ext import commands
 import random
 import aiohttp
+import datetime # Import the datetime module
+from discord.ext import commands
 from keep_alive import keep_alive
 
 intents = discord.Intents.default()
@@ -23,7 +24,7 @@ async def on_ready():
             status=discord.Status.online,
             activity=discord.Game(name="!help | Type me a command!")
         )
-        
+
         # If this isn't the first startup, announce that bot is back up
         if not first_startup:
             for guild in bot.guilds:
@@ -37,7 +38,7 @@ async def on_ready():
                         )
                         await channel.send(embed=embed)
                         break  # Only send to one channel per server
-        
+
         first_startup = False
 
 @bot.command(name='hello')
@@ -61,21 +62,24 @@ async def eightball(ctx, *, question):
         "Outlook good", "Yes", "Signs point to yes", "Reply hazy, try again",
         "Ask again later", "Better not tell you now", "Cannot predict now",
         "Concentrate and ask again", "Don't count on it", "My reply is no",
-        "My sources say no", "Outlook not so good", "Very doubtful"
+        "My sources say no", "My sources say no", "Outlook not so good", "Very doubtful"
     ]
     await ctx.send(f'🎱 {random.choice(responses)}')
 
 @bot.command(name='status')
 async def status(ctx):
     """Check if the bot is online and responding"""
-    uptime = discord.utils.utcnow() - bot.user.created_at if bot.user else None
+    uptime = datetime.datetime.now(datetime.timezone.utc) - bot.user.created_at if bot.user else None
+    if not bot.user:
+        await ctx.send("❌ Bot is not fully initialized yet.")
+        return
     embed = discord.Embed(
         title="🟢 Bot Status",
         description="I'm online and running perfectly!",
         color=0x00ff00
     )
     embed.add_field(name="Latency", value=f"{round(bot.latency * 1000)}ms", inline=True)
-    embed.add_field(name="Servers", value=len(bot.guilds), inline=True)
+    embed.add_field(name="Servers", value=str(len(bot.guilds)), inline=True)
     if uptime:
         embed.add_field(name="Account Age", value=f"{uptime.days} days", inline=True)
     await ctx.send(embed=embed)
@@ -90,7 +94,7 @@ async def announce_online(ctx):
     )
     embed.add_field(name="Latency", value=f"{round(bot.latency * 1000)}ms", inline=True)
     embed.add_field(name="Status", value="🟢 Online", inline=True)
-    
+
     # Send as a direct message to the user
     try:
         await ctx.author.send(embed=embed)
@@ -116,122 +120,86 @@ async def help_command(ctx):
         description="Here are all the commands you can use:",
         color=0x3498db
     )
-    
+
     embed.add_field(
         name="👋 Basic Commands",
         value="`!hello` - Say hello\n`!ping` - Check bot latency",
         inline=False
     )
-    
+
     embed.add_field(
         name="🎮 Fun Commands", 
         value="`!roll [sides]` - Roll a dice (default 6 sides)\n`!8ball <question>` - Ask the magic 8-ball",
         inline=False
     )
-    
+
     embed.add_field(
         name="⚙️ Utility Commands",
         value="`!status` - Check bot status\n`!announce` - Announce bot is online\n`!robloxverify <username>` - Verify a Roblox user\n`!updates` - View bot updates\n`!version` - Show bot version\n`!help` - Show this help menu",
         inline=False
     )
-    
+
     embed.set_footer(text="Made by Overpowered Productions! | Use ! before each command")
     await ctx.send(embed=embed)
 
 @bot.command(name='robloxverify')
 async def roblox_verify(ctx, *, username: str):
     """Verify a Roblox username and get user information"""
-    # Create timeout and retry settings
-    timeout = aiohttp.ClientTimeout(total=10)
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    }
-    
-    async with aiohttp.ClientSession(timeout=timeout, headers=headers) as session:
-        try:
-            # Get user ID from username with retry logic
-            search_url = f"https://users.roblox.com/v1/users/search?keyword={username}&limit=1"
-            
-            for attempt in range(3):  # Try up to 3 times
-                try:
-                    async with session.get(search_url) as response:
-                        if response.status == 200:
-                            search_data = await response.json()
-                            break
-                        elif response.status == 429:
-                            await ctx.send("⏳ Roblox API rate limited, retrying...")
-                            await asyncio.sleep(2)
-                            continue
-                        else:
-                            await ctx.send(f"❌ Roblox API error (Status: {response.status}). Retrying...")
-                            await asyncio.sleep(1)
-                            continue
-                except asyncio.TimeoutError:
-                    if attempt == 2:
-                        await ctx.send("❌ Connection to Roblox API timed out after 3 attempts!")
-                        return
-                    await ctx.send("⏳ Request timed out, retrying...")
-                    await asyncio.sleep(1)
-                    continue
-            else:
-                await ctx.send("❌ Failed to connect to Roblox API after 3 attempts!")
-                return
-            
-            if not search_data.get('data'):
-                await ctx.send(f"❌ Roblox user '{username}' not found!")
-                return
-            
-            user_id = search_data['data'][0]['id']
-            exact_username = search_data['data'][0]['name']
-            display_name = search_data['data'][0]['displayName']
-            
-            # Get detailed user information
-            user_url = f"https://users.roblox.com/v1/users/{user_id}"
-            async with session.get(user_url) as response:
+    async with aiohttp.ClientSession() as session:
+        if username:
+            # Search for the username to get the exact user ID and username
+            # URL encode the username to handle special characters properly (like spaces)
+            from urllib.parse import quote
+            search_url = f"https://users.roblox.com/v1/users/search?keyword={quote(username)}&limit=1"
+            async with session.get(search_url) as response:
                 if response.status != 200:
-                    await ctx.send(f"❌ Error getting user details (Status: {response.status})")
+                    await ctx.send(f"❌ Error searching for user (Status: {response.status})")
                     return
+                search_data = await response.json()
                 
-                user_data = await response.json()
+                user_id = search_data['data'][0]['id']
+                exact_username = search_data['data'][0]['name']
+                display_name = search_data['data'][0]['displayName']
                 
-                # Create verification embed
-                embed = discord.Embed(
-                    title="🎮 Roblox User Verified!",
-                    description=f"Successfully found Roblox user: **{exact_username}**",
-                    color=0x00b2ff
-                )
-                
-                embed.add_field(name="👤 Username", value=exact_username, inline=True)
-                embed.add_field(name="✨ Display Name", value=display_name, inline=True)
-                embed.add_field(name="🆔 User ID", value=user_id, inline=True)
-                
-                if user_data.get('description'):
-                    embed.add_field(name="📝 Bio", value=user_data['description'][:100] + "..." if len(user_data['description']) > 100 else user_data['description'], inline=False)
-                
-                embed.add_field(name="📅 Created", value=user_data.get('created', 'Unknown')[:10], inline=True)
-                embed.add_field(name="🔗 Profile", value=f"[View Profile](https://www.roblox.com/users/{user_id}/profile)", inline=True)
-                
-                # Try to get avatar thumbnail
-                avatar_url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&size=150x150&format=Png&isCircular=false"
-                try:
+                # Get detailed user information
+                user_url = f"https://users.roblox.com/v1/users/{user_id}"
+                async with session.get(user_url) as response:
+                    if response.status != 200:
+                        await ctx.send(f"❌ Error getting user details (Status: {response.status})")
+                        return
+                    
+                    user_data = await response.json()
+
+                    # Create verification embed
+                    embed = discord.Embed(
+                        title="🎮 Roblox User Verified!",
+                        description=f"Successfully found Roblox user: **{exact_username}**",
+                        color=0x00b2ff
+                    )
+                    
+                    embed.add_field(name="👤 Username", value=exact_username, inline=True)
+                    embed.add_field(name="✨ Display Name", value=display_name, inline=True)
+                    embed.add_field(name="🆔 User ID", value=user_id, inline=True)
+                    
+                    if user_data.get('description'):
+                        embed.add_field(name="📝 Bio", value=user_data['description'][:100] + "..." if len(user_data['description']) > 100 else user_data['description'], inline=False)
+                    
+                    embed.add_field(name="📅 Created", value=user_data.get('created', 'Unknown')[:10], inline=True)
+                    embed.add_field(name="🔗 Profile", value=f"[View Profile](https://www.roblox.com/users/{user_id}/profile)", inline=True)
+                    
+                    avatar_url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&size=150x150&format=Png&isCircular=false"
                     async with session.get(avatar_url) as avatar_response:
                         if avatar_response.status == 200:
                             avatar_data = await avatar_response.json()
                             if avatar_data.get('data') and avatar_data['data']:
                                 embed.set_thumbnail(url=avatar_data['data'][0]['imageUrl'])
-                except:
-                    pass  # Avatar is optional, continue without it
-                
-                embed.set_footer(text=f"Verified by {ctx.author.display_name}")
-                await ctx.send(embed=embed)
-                
-        except aiohttp.ClientError as e:
-            await ctx.send(f"❌ Network error connecting to Roblox API: {str(e)}")
-        except asyncio.TimeoutError:
-            await ctx.send("❌ Connection to Roblox API timed out!")
-        except Exception as e:
-            await ctx.send(f"❌ Unexpected error verifying Roblox user: {str(e)}")
 
+                            embed.set_footer(text=f"Verified by {ctx.author.display_name}")
+                    await ctx.send(embed=embed)
+        else:  # If username is not provided or invalid format is provided then show error message and return the error message from the API to the user for debugging purposes if needed (like if the API is down or the user is not found)
+            await ctx.send("❌ Please enter a username to verify.")
+            return
+            
 @bot.command(name='updates')
 async def bot_updates(ctx):
     """Shows the latest bot updates and changelog"""
@@ -241,7 +209,6 @@ async def bot_updates(ctx):
         color=0x7289da
     )
     
-    # Version 1.3.0 - Latest
     embed.add_field(
         name="📅 Version 1.3.0 - Latest Update",
         value="🆕 **New Features:**\n"
@@ -251,8 +218,7 @@ async def bot_updates(ctx):
               "• Added user creation date and bio display",
         inline=False
     )
-    
-    # Version 1.2.0
+
     embed.add_field(
         name="📅 Version 1.2.0",
         value="🔧 **Improvements:**\n"
@@ -262,8 +228,7 @@ async def bot_updates(ctx):
               "• Better command organization in help menu",
         inline=False
     )
-    
-    # Version 1.1.0
+
     embed.add_field(
         name="📅 Version 1.1.0",
         value="🎮 **Features Added:**\n"
@@ -273,8 +238,7 @@ async def bot_updates(ctx):
               "• Enhanced bot presence with activity status",
         inline=False
     )
-    
-    # Version 1.0.0
+
     embed.add_field(
         name="📅 Version 1.0.0 - Initial Release",
         value="🚀 **Core Features:**\n"
@@ -284,13 +248,13 @@ async def bot_updates(ctx):
               "• Custom command prefix (!)",
         inline=False
     )
-    
+
     embed.add_field(
         name="🔮 Coming Soon",
         value="• More Roblox integration features\n• Fun mini-games\n• Server moderation tools\n• Custom user profiles",
         inline=False
     )
-    
+
     embed.set_footer(text="Made by Overpowered Productions! | Stay tuned for more updates!")
     await ctx.send(embed=embed)
 
@@ -306,11 +270,11 @@ async def version_command(ctx):
     embed.add_field(name="📋 Version", value="1.3.0", inline=True)
     embed.add_field(name="🐍 Python", value="3.11+", inline=True)
     embed.add_field(name="📚 Discord.py", value="2.5.2+", inline=True)
-    
+
     embed.add_field(name="👨‍💻 Developer", value="ScriptNex", inline=True)
     embed.add_field(name="🏢 Organization", value="Overpowered Productions", inline=True)
     embed.add_field(name="📅 Last Updated", value="May 2025", inline=True)
-    
+
     embed.add_field(
         name="🚀 Features",
         value="• Discord Commands\n• Roblox Integration\n• 24/7 Uptime\n• Auto-announcements",
