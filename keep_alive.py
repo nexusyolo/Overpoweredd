@@ -17,4 +17,4 @@ def keep_alive():
         logging.error(f"Error starting Flask app: {e}")
 
 if __name__ == "__main__":
-    run()
+    keep_alive()
