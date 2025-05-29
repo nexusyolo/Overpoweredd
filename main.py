@@ -44,6 +44,21 @@ async def eightball(ctx, *, question):
     ]
     await ctx.send(f'🎱 {random.choice(responses)}')
 
+@bot.command(name='status')
+async def status(ctx):
+    """Check if the bot is online and responding"""
+    uptime = discord.utils.utcnow() - bot.user.created_at if bot.user else None
+    embed = discord.Embed(
+        title="🟢 Bot Status",
+        description="I'm online and running perfectly!",
+        color=0x00ff00
+    )
+    embed.add_field(name="Latency", value=f"{round(bot.latency * 1000)}ms", inline=True)
+    embed.add_field(name="Servers", value=len(bot.guilds), inline=True)
+    if uptime:
+        embed.add_field(name="Account Age", value=f"{uptime.days} days", inline=True)
+    await ctx.send(embed=embed)
+
 # Get token from environment variables
 token = os.getenv('DISCORD_BOT_TOKEN')
 if not token:
