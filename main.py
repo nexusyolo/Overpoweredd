@@ -156,24 +156,51 @@ async def on_command_error(ctx, error):
         print(f"Unhandled error: {error}")
 
 @bot.command(name='robloxverify')
-async def roblox_verify(ctx, *, username: str):
-    """Verify a Roblox username and get user information"""
+async def roblox_verify(ctx, *, username: str = None):
+    """Verify a Roblox username and get user information (like Bloxlink)"""
+    if not username:
+        embed = discord.Embed(
+            title="❌ Missing Username",
+            description="Please provide a Roblox username to verify!\n\n**Usage:** `!robloxverify <username>`\n**Example:** `!robloxverify JohnDoe`",
+            color=0xff0000
+        )
+        await ctx.send(embed=embed)
+        return
+    
+    # Send a loading message
+    loading_embed = discord.Embed(
+        title="🔍 Searching...",
+        description=f"Looking up Roblox user: `{username}`",
+        color=0xffff00
+    )
+    loading_msg = await ctx.send(embed=loading_embed)
+    
     try:
-        timeout = aiohttp.ClientTimeout(total=10)  # 10 second timeout
+        timeout = aiohttp.ClientTimeout(total=15)
         async with aiohttp.ClientSession(timeout=timeout) as session:
-         if username:
-            # Search for the username to get the exact user ID and username
-            # URL encode the username to handle special characters properly (like spaces)
             from urllib.parse import quote
+            
+            # Search for the username
             search_url = f"https://users.roblox.com/v1/users/search?keyword={quote(username)}&limit=1"
             async with session.get(search_url) as response:
                 if response.status != 200:
-                    await ctx.send(f"❌ Error searching for user (Status: {response.status})")
+                    error_embed = discord.Embed(
+                        title="❌ Search Failed",
+                        description=f"Roblox API returned status code: {response.status}\nPlease try again later.",
+                        color=0xff0000
+                    )
+                    await loading_msg.edit(embed=error_embed)
                     return
+                
                 search_data = await response.json()
                 
                 if not search_data.get('data') or len(search_data['data']) == 0:
-                    await ctx.send(f"❌ No user found with username: {username}")
+                    not_found_embed = discord.Embed(
+                        title="❌ User Not Found",
+                        description=f"No Roblox user found with username: `{username}`\n\nMake sure the username is spelled correctly!",
+                        color=0xff0000
+                    )
+                    await loading_msg.edit(embed=not_found_embed)
                     return
                 
                 user_id = search_data['data'][0]['id']
@@ -184,42 +211,155 @@ async def roblox_verify(ctx, *, username: str):
                 user_url = f"https://users.roblox.com/v1/users/{user_id}"
                 async with session.get(user_url) as response:
                     if response.status != 200:
-                        await ctx.send(f"❌ Error getting user details (Status: {response.status})")
+                        error_embed = discord.Embed(
+                            title="❌ Failed to Get User Details",
+                            description=f"Could not retrieve user information (Status: {response.status})",
+                            color=0xff0000
+                        )
+                        await loading_msg.edit(embed=error_embed)
                         return
                     
                     user_data = await response.json()
+                    
+                    # Get user's badges count
+                    badges_url = f"https://badges.roblox.com/v1/users/{user_id}/badges?limit=10&sortOrder=Asc"
+                    badges_count = "Unknown"
+                    try:
+                        async with session.get(badges_url) as badges_response:
+                            if badges_response.status == 200:
+                                badges_data = await badges_response.json()
+                                badges_count = len(badges_data.get('data', []))
+                    except:
+                        pass
+                    
+                    # Get user's friends count
+                    friends_url = f"https://friends.roblox.com/v1/users/{user_id}/friends/count"
+                    friends_count = "Unknown"
+                    try:
+                        async with session.get(friends_url) as friends_response:
+                            if friends_response.status == 200:
+                                friends_data = await friends_response.json()
+                                friends_count = friends_data.get('count', 'Unknown')
+                    except:
+                        pass
 
-                    # Create verification embed
+                    # Create Bloxlink-style verification embed
                     embed = discord.Embed(
-                        title="🎮 Roblox User Verified!",
-                        description=f"Successfully found Roblox user: **{exact_username}**",
-                        color=0x00b2ff
+                        title="✅ Roblox User Found!",
+                        color=0x00ff88
                     )
                     
-                    embed.add_field(name="👤 Username", value=exact_username, inline=True)
-                    embed.add_field(name="✨ Display Name", value=display_name, inline=True)
-                    embed.add_field(name="🆔 User ID", value=user_id, inline=True)
+                    # Add user avatar
+                    avatar_url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&size=420x420&format=Png&isCircular=false"
+                    try:
+                        async with session.get(avatar_url) as avatar_response:
+                            if avatar_response.status == 200:
+                                avatar_data = await avatar_response.json()
+                                if avatar_data.get('data') and avatar_data['data']:
+                                    embed.set_thumbnail(url=avatar_data['data'][0]['imageUrl'])
+                    except:
+                        pass
                     
-                    if user_data.get('description'):
-                        embed.add_field(name="📝 Bio", value=user_data['description'][:100] + "..." if len(user_data['description']) > 100 else user_data['description'], inline=False)
+                    # User information fields
+                    embed.add_field(
+                        name="👤 Username", 
+                        value=f"**{exact_username}**", 
+                        inline=True
+                    )
+                    embed.add_field(
+                        name="✨ Display Name", 
+                        value=f"**{display_name}**", 
+                        inline=True
+                    )
+                    embed.add_field(
+                        name="🆔 User ID", 
+                        value=f"`{user_id}`", 
+                        inline=True
+                    )
                     
-                    embed.add_field(name="📅 Created", value=user_data.get('created', 'Unknown')[:10], inline=True)
-                    embed.add_field(name="🔗 Profile", value=f"[View Profile](https://www.roblox.com/users/{user_id}/profile)", inline=True)
+                    # Account creation date
+                    created_date = user_data.get('created', 'Unknown')
+                    if created_date != 'Unknown':
+                        try:
+                            from datetime import datetime
+                            created_dt = datetime.fromisoformat(created_date.replace('Z', '+00:00'))
+                            formatted_date = created_dt.strftime('%B %d, %Y')
+                            days_old = (datetime.now() - created_dt.replace(tzinfo=None)).days
+                            embed.add_field(
+                                name="📅 Account Created", 
+                                value=f"{formatted_date}\n({days_old} days ago)", 
+                                inline=True
+                            )
+                        except:
+                            embed.add_field(
+                                name="📅 Account Created", 
+                                value=created_date[:10], 
+                                inline=True
+                            )
+                    else:
+                        embed.add_field(
+                            name="📅 Account Created", 
+                            value="Unknown", 
+                            inline=True
+                        )
                     
-                    avatar_url = f"https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds={user_id}&size=150x150&format=Png&isCircular=false"
-                    async with session.get(avatar_url) as avatar_response:
-                        if avatar_response.status == 200:
-                            avatar_data = await avatar_response.json()
-                            if avatar_data.get('data') and avatar_data['data']:
-                                embed.set_thumbnail(url=avatar_data['data'][0]['imageUrl'])
-
-                            embed.set_footer(text=f"Verified by {ctx.author.display_name}")
-                    await ctx.send(embed=embed)
-        else:  # If username is not provided or invalid format is provided then show error message and return the error message from the API to the user for debugging purposes if needed (like if the API is down or the user is not found)
-            await ctx.send("❌ Please enter a username to verify.")
-            return
+                    # Friends and badges
+                    embed.add_field(
+                        name="👥 Friends", 
+                        value=f"**{friends_count}**", 
+                        inline=True
+                    )
+                    embed.add_field(
+                        name="🏆 Badges", 
+                        value=f"**{badges_count}**", 
+                        inline=True
+                    )
+                    
+                    # Bio/Description
+                    description = user_data.get('description', '').strip()
+                    if description:
+                        if len(description) > 200:
+                            description = description[:200] + "..."
+                        embed.add_field(
+                            name="📝 About", 
+                            value=f"```{description}```", 
+                            inline=False
+                        )
+                    else:
+                        embed.add_field(
+                            name="📝 About", 
+                            value="*No description set*", 
+                            inline=False
+                        )
+                    
+                    # Links
+                    embed.add_field(
+                        name="🔗 Links", 
+                        value=f"[🎮 Roblox Profile](https://www.roblox.com/users/{user_id}/profile) • [👕 Avatar](https://www.roblox.com/users/{user_id}/profile#!/about)", 
+                        inline=False
+                    )
+                    
+                    embed.set_footer(
+                        text=f"Verified by {ctx.author.display_name} • Powered by Overpowered Productions",
+                        icon_url=ctx.author.avatar.url if ctx.author.avatar else None
+                    )
+                    
+                    await loading_msg.edit(embed=embed)
+                    
+    except asyncio.TimeoutError:
+        timeout_embed = discord.Embed(
+            title="⏰ Request Timeout",
+            description="The request to Roblox took too long. Please try again later.",
+            color=0xff0000
+        )
+        await loading_msg.edit(embed=timeout_embed)
     except Exception as e:
-        await ctx.send("❌ An error occurred while verifying the Roblox user. Please try again later.")
+        error_embed = discord.Embed(
+            title="❌ Verification Failed",
+            description="An unexpected error occurred while verifying the Roblox user.\nPlease try again later.",
+            color=0xff0000
+        )
+        await loading_msg.edit(embed=error_embed)
         print(f"Roblox verify error: {e}")
             
 @bot.command(name='updates')
@@ -229,7 +369,7 @@ async def bot_updates(ctx):
         title="🔄 Bot Updates & Changelog",
         description="Here are the latest updates to Overpowered Productions Bot!",
         color=0x7289da
-    )
+    )embed.
     
     embed.add_field(
         name="📅 Version 1.3.0 - Latest Update",
