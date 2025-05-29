@@ -453,8 +453,8 @@ if not token:
     print("Please add your Discord bot token to the Secrets tab.")
 else:
     keep_alive()  # Start the keep-alive server before running the bot
-print ("Bot is starting up...")
-print ("Bot is ready!")
-print ("Bot is running on Discord!")
-print ("Bot is ready to serve!")
-bot.run(token) 
+    print("Bot is starting up...")
+    print("Bot is ready!")
+    print("Bot is running on Discord!")
+    print("Bot is ready to serve!")
+    bot.run(token) 
