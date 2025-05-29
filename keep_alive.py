@@ -8,7 +8,7 @@ app = Flask(__name__)
 def home():
     return "I'm alive!"
 
-def run():
+def keep_alive():
     """Runs the Flask app."""
     try:
         port = int(os.environ.get("PORT", 5000))
