@@ -131,7 +131,7 @@ async def help_command(ctx):
     
     embed.add_field(
         name="⚙️ Utility Commands",
-        value="`!status` - Check bot status\n`!announce` - Announce bot is online\n`!robloxverify <username>` - Verify a Roblox user\n`!updates` - View bot updates\n`!help` - Show this help menu",
+        value="`!status` - Check bot status\n`!announce` - Announce bot is online\n`!robloxverify <username>` - Verify a Roblox user\n`!updates` - View bot updates\n`!version` - Show bot version\n`!help` - Show this help menu",
         inline=False
     )
     
@@ -259,6 +259,32 @@ async def bot_updates(ctx):
     )
     
     embed.set_footer(text="Made by Overpowered Productions! | Stay tuned for more updates!")
+    await ctx.send(embed=embed)
+
+@bot.command(name='version')
+async def version_command(ctx):
+    """Shows the current bot version and information"""
+    embed = discord.Embed(
+        title="🤖 Bot Version Info",
+        description="Overpowered Productions Discord Bot",
+        color=0x9932cc
+    )
+    
+    embed.add_field(name="📋 Version", value="1.3.0", inline=True)
+    embed.add_field(name="🐍 Python", value="3.11+", inline=True)
+    embed.add_field(name="📚 Discord.py", value="2.5.2+", inline=True)
+    
+    embed.add_field(name="👨‍💻 Developer", value="ScriptNex", inline=True)
+    embed.add_field(name="🏢 Organization", value="Overpowered Productions", inline=True)
+    embed.add_field(name="📅 Last Updated", value="May 2025", inline=True)
+    
+    embed.add_field(
+        name="🚀 Features",
+        value="• Discord Commands\n• Roblox Integration\n• 24/7 Uptime\n• Auto-announcements",
+        inline=False
+    )
+    
+    embed.set_footer(text="Type !updates to see the full changelog!")
     await ctx.send(embed=embed)
 
 # Get token from environment variables
