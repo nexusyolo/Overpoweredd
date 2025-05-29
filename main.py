@@ -91,6 +91,39 @@ async def announce_online(ctx):
     embed.add_field(name="Status", value="🟢 Online", inline=True)
     await ctx.send(embed=embed)
 
+# Remove the default help command to replace it with our custom one
+bot.remove_command('help')
+
+@bot.command(name='help')
+async def help_command(ctx):
+    """Shows all available commands"""
+    embed = discord.Embed(
+        title="🤖 Bot Commands",
+        description="Here are all the commands you can use:",
+        color=0x3498db
+    )
+    
+    embed.add_field(
+        name="👋 Basic Commands",
+        value="`!hello` - Say hello\n`!ping` - Check bot latency",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="🎮 Fun Commands", 
+        value="`!roll [sides]` - Roll a dice (default 6 sides)\n`!8ball <question>` - Ask the magic 8-ball",
+        inline=False
+    )
+    
+    embed.add_field(
+        name="⚙️ Utility Commands",
+        value="`!status` - Check bot status\n`!announce` - Announce bot is online\n`!help` - Show this help menu",
+        inline=False
+    )
+    
+    embed.set_footer(text="Made by Overpowered Productions! | Use ! before each command")
+    await ctx.send(embed=embed)
+
 # Get token from environment variables
 token = os.getenv('DISCORD_BOT_TOKEN')
 if not token:
