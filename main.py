@@ -142,10 +142,25 @@ async def help_command(ctx):
     embed.set_footer(text="Made by Overpowered Productions! | Use ! before each command")
     await ctx.send(embed=embed)
 
+@bot.event
+async def on_command_error(ctx, error):
+    """Global error handler to prevent bot crashes"""
+    if isinstance(error, commands.CommandNotFound):
+        return  # Ignore unknown commands
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send(f"❌ Missing required argument: {error.param.name}")
+    elif isinstance(error, commands.BadArgument):
+        await ctx.send(f"❌ Invalid argument provided: {error}")
+    else:
+        await ctx.send("❌ An unexpected error occurred. Please try again later.")
+        print(f"Unhandled error: {error}")
+
 @bot.command(name='robloxverify')
 async def roblox_verify(ctx, *, username: str):
     """Verify a Roblox username and get user information"""
-    async with aiohttp.ClientSession() as session:
+    try:
+        timeout = aiohttp.ClientTimeout(total=10)  # 10 second timeout
+        async with aiohttp.ClientSession(timeout=timeout) as session:
         if username:
             # Search for the username to get the exact user ID and username
             # URL encode the username to handle special characters properly (like spaces)
@@ -156,6 +171,10 @@ async def roblox_verify(ctx, *, username: str):
                     await ctx.send(f"❌ Error searching for user (Status: {response.status})")
                     return
                 search_data = await response.json()
+                
+                if not search_data.get('data') or len(search_data['data']) == 0:
+                    await ctx.send(f"❌ No user found with username: {username}")
+                    return
                 
                 user_id = search_data['data'][0]['id']
                 exact_username = search_data['data'][0]['name']
@@ -199,6 +218,9 @@ async def roblox_verify(ctx, *, username: str):
         else:  # If username is not provided or invalid format is provided then show error message and return the error message from the API to the user for debugging purposes if needed (like if the API is down or the user is not found)
             await ctx.send("❌ Please enter a username to verify.")
             return
+    except Exception as e:
+        await ctx.send("❌ An error occurred while verifying the Roblox user. Please try again later.")
+        print(f"Roblox verify error: {e}")
             
 @bot.command(name='updates')
 async def bot_updates(ctx):
