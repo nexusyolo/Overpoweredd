@@ -1,20 +1,20 @@
 from flask import Flask
-import threading
-import time
+import os
+import logging
 
-app = Flask('')
+app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return f"Bot is running! Timestamp: {int(time.time())}"
-
-@app.route('/health')
-def health():
-    return {"status": "alive", "timestamp": int(time.time())}
+    return "I'm alive!"
 
 def run():
-    app.run(host="0.0.0.0", port=5000, debug=False, use_reloader=False)
+    """Runs the Flask app."""
+    try:
+        port = int(os.environ.get("PORT", 5000))
+        app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)
+    except Exception as e:
+        logging.error(f"Error starting Flask app: {e}")
 
-def keep_alive():
-    t = threading.Thread(target=run, daemon=True)
-    t.start()
+if __name__ == "__main__":
+    run()
