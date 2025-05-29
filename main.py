@@ -161,7 +161,7 @@ async def roblox_verify(ctx, *, username: str):
     try:
         timeout = aiohttp.ClientTimeout(total=10)  # 10 second timeout
         async with aiohttp.ClientSession(timeout=timeout) as session:
-        if username:
+         if username:
             # Search for the username to get the exact user ID and username
             # URL encode the username to handle special characters properly (like spaces)
             from urllib.parse import quote
@@ -313,5 +313,8 @@ if not token:
     print("Please add your Discord bot token to the Secrets tab.")
 else:
     keep_alive()  # Start the keep-alive server before running the bot
-
-    bot.run(token)
+print ("Bot is starting up...")
+print ("Bot is ready!")
+print ("Bot is running on Discord!")
+print ("Bot is ready to serve!")
+bot.run(token) 
