@@ -369,8 +369,8 @@ async def bot_updates(ctx):
         title="🔄 Bot Updates & Changelog",
         description="Here are the latest updates to Overpowered Productions Bot!",
         color=0x7289da
-    )embed.
-    
+    )
+
     embed.add_field(
         name="📅 Version 1.3.0 - Latest Update",
         value="🆕 **New Features:**\n"
