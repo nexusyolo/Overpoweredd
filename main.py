@@ -10,11 +10,14 @@ import datetime #used for the uptime command
 
 from discord.ext import commands
 from discord import app_commands
+from dotenv import load_dotenv
 
 import signal #for the shutdown command
 
+load_dotenv()
+
 #CONST
-TEST_GUILD_ID = 739136163255943239
+TEST_GUILD_ID = 997266121403150417
 BOT_PREFIX = "!"
 GAME_URL = "https://www.roblox.com/games/104246316485544/Project-GTR"
 
